@@ -90,8 +90,8 @@ def insert_record(xmind_name, note=''):
 
 def delete_record(filename, record_id):
     xmind_file = join(app.config['UPLOAD_FOLDER'], filename)
-    testlink_file = join(app.config['UPLOAD_FOLDER'], filename[:-5] + 'xml')
-    zentao_file = join(app.config['UPLOAD_FOLDER'], filename[:-5] + 'csv')
+    testlink_file = join(app.config['UPLOAD_FOLDER'], f'{filename[:-5]}xml')
+    zentao_file = join(app.config['UPLOAD_FOLDER'], f'{filename[:-5]}csv')
 
     for f in [xmind_file, testlink_file, zentao_file]:
         if exists(f):
@@ -105,36 +105,37 @@ def delete_record(filename, record_id):
 
 def delete_records(keep=20):
     """Clean up files on server and mark the record as deleted"""
-    sql = "SELECT * from records where is_deleted<>1 ORDER BY id desc LIMIT -1 offset {}".format(keep)
+    sql = f"SELECT * from records where is_deleted<>1 ORDER BY id desc LIMIT -1 offset {keep}"
+
     assert isinstance(g.db, sqlite3.Connection)
     c = g.db.cursor()
     c.execute(sql)
     rows = c.fetchall()
+    sql = 'UPDATE records SET is_deleted=1 WHERE id = ?'
     for row in rows:
         name = row[1]
         xmind_file = join(app.config['UPLOAD_FOLDER'], name)
-        testlink_file = join(app.config['UPLOAD_FOLDER'], name[:-5] + 'xml')
-        zentao_file = join(app.config['UPLOAD_FOLDER'], name[:-5] + 'csv')
+        testlink_file = join(app.config['UPLOAD_FOLDER'], f'{name[:-5]}xml')
+        zentao_file = join(app.config['UPLOAD_FOLDER'], f'{name[:-5]}csv')
 
         for f in [xmind_file, testlink_file, zentao_file]:
             if exists(f):
                 os.remove(f)
 
-        sql = 'UPDATE records SET is_deleted=1 WHERE id = ?'
         c.execute(sql, (row[0],))
         g.db.commit()
 
 
 def get_latest_record():
-    found = list(get_records(1))
-    if found:
+    if found := list(get_records(1)):
         return found[0]
 
 
 def get_records(limit=8):
     short_name_length = 120
     c = g.db.cursor()
-    sql = "select * from records where is_deleted<>1 order by id desc limit {}".format(int(limit))
+    sql = f"select * from records where is_deleted<>1 order by id desc limit {int(limit)}"
+
     c.execute(sql)
     rows = c.fetchall()
 
@@ -143,7 +144,7 @@ def get_records(limit=8):
 
         # shorten the name for display
         if len(name) > short_name_length:
-            short_name = name[:short_name_length] + '...'
+            short_name = f'{name[:short_name_length]}...'
 
         # more readable time format
         create_on = arrow.get(create_on).humanize()
@@ -159,8 +160,8 @@ def check_file_name(name):
     secured = secure_filename(name)
     if not secured:
         secured = re.sub('[^\w\d]+', '_', name)  # only keep letters and digits from file name
-        assert secured, 'Unable to parse file name: {}!'.format(name)
-    return secured + '.xmind'
+        assert secured, f'Unable to parse file name: {name}!'
+    return f'{secured}.xmind'
 
 
 def save_file(file):
@@ -170,7 +171,7 @@ def save_file(file):
         upload_to = join(app.config['UPLOAD_FOLDER'], filename)
 
         if exists(upload_to):
-            filename = '{}_{}.xmind'.format(filename[:-6], arrow.now().strftime('%Y%m%d_%H%M%S'))
+            filename = f"{filename[:-6]}_{arrow.now().strftime('%Y%m%d_%H%M%S')}.xmind"
             upload_to = join(app.config['UPLOAD_FOLDER'], filename)
 
         file.save(upload_to)
@@ -193,7 +194,7 @@ def verify_uploaded_files(files):
         g.download_xml = get_latest_record()[1]
 
     if g.invalid_files:
-        g.error = "Invalid file: {}".format(','.join(g.invalid_files))
+        g.error = f"Invalid file: {','.join(g.invalid_files)}"
 
 
 @app.route('/', methods=['GET', 'POST'])
@@ -264,10 +265,7 @@ def preview_file(filename):
         abort(404)
 
     testsuites = get_xmind_testsuites(full_path)
-    suite_count = 0
-    for suite in testsuites:
-        suite_count += len(suite.sub_suites)
-
+    suite_count = sum(len(suite.sub_suites) for suite in testsuites)
     testcases = get_xmind_testcase_list(full_path)
 
     return render_template('preview.html', name=filename, suite=testcases, suite_count=suite_count)

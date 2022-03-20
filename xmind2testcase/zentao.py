@@ -25,7 +25,7 @@ def xmind_to_zentao_csv_file(xmind_file):
         row = gen_a_testcase_row(testcase)
         zentao_testcase_rows.append(row)
 
-    zentao_file = xmind_file[:-6] + '.csv'
+    zentao_file = f'{xmind_file[:-6]}.csv'
     if os.path.exists(zentao_file):
         os.remove(zentao_file)
         # logging.info('The zentao csv file already exists, return it directly: %s', zentao_file)
@@ -52,8 +52,21 @@ def gen_a_testcase_row(testcase_dict):
     case_priority = gen_case_priority(testcase_dict['importance'])
     case_type = gen_case_type(testcase_dict['execution_type'])
     case_apply_phase = '系统测试阶段'
-    row = [case_no, case_product, case_module, case_req, case_title, case_precontion, case_step, case_expected_result, case_real_result, case_keyword, case_priority, case_type, case_apply_phase]
-    return row
+    return [
+        case_no,
+        case_product,
+        case_module,
+        case_req,
+        case_title,
+        case_precontion,
+        case_step,
+        case_expected_result,
+        case_real_result,
+        case_keyword,
+        case_priority,
+        case_type,
+        case_apply_phase,
+    ]
 
 
 def gen_case_module(module_name):
@@ -80,20 +93,12 @@ def gen_case_step_and_expected_result(steps):
 
 def gen_case_priority(priority):
     mapping = {1: '高', 2: '中', 3: '低'}
-    if priority in mapping.keys():
-        # return mapping[priority]
-        return str(priority)
-    else:
-        # return '中'
-        return '2'
+    return str(priority) if priority in mapping else '2'
 
 
 def gen_case_type(case_type):
     mapping = {1: '功能测试', 2: '性能测试', 3: '配置相关', 4: '安装部署', 5: '安全相关', 6: '接口测试', 7: '其他'}
-    if case_type in mapping.keys():
-        return mapping[case_type]
-    else:
-        return '功能测试'
+    return mapping.get(case_type, '功能测试')
 
 
 if __name__ == '__main__':

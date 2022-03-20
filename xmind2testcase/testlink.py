@@ -24,7 +24,7 @@ def xmind_to_testlink_xml_file(xmind_file, is_all_sheet=True):
         testsuites = [testsuites[0]]
 
     xml_content = testsuites_to_xml_content(testsuites)
-    testlink_xml_file = xmind_file[:-6] + '.xml'
+    testlink_xml_file = f'{xmind_file[:-6]}.xml'
 
     if os.path.exists(testlink_xml_file):
         logging.info('the testlink xml file already exists, return it directly: %s', testlink_xml_file)
@@ -124,7 +124,11 @@ def element_set_text(element, content):
 
 def is_should_parse(content):
     """An element that has a string content and doesn't start with exclamation mark should be parsing"""
-    return isinstance(content, str) and content.strip() != '' and not content[0] in config['ignore_char']
+    return (
+        isinstance(content, str)
+        and content.strip() != ''
+        and content[0] not in config['ignore_char']
+    )
 
 
 def is_should_skip(content):
@@ -146,10 +150,7 @@ def _convert_execution_type(value):
 
 def _convert_importance(value):
     mapping = {1: '3', 2: '2', 3: '1'}
-    if value in mapping.keys():
-        return mapping[value]
-    else:
-        return '2'
+    return mapping.get(value, '2')
 
 
 if __name__ == '__main__':
