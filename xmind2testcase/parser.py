@@ -19,9 +19,7 @@ def xmind_to_testsuites(xmind_content_dict):
     for sheet in xmind_content_dict:
         logging.debug('start to parse a sheet: %s', sheet['title'])
         root_topic = sheet['topic']
-        sub_topics = root_topic.get('topics', [])
-
-        if sub_topics:
+        if sub_topics := root_topic.get('topics', []):
             root_topic['topics'] = filter_empty_or_ignore_topic(sub_topics)
         else:
             logging.warning('This is a blank sheet(%s), should have at least 1 sub topic(test suite)', sheet['title'])
@@ -50,11 +48,13 @@ def filter_empty_or_ignore_topic(topics):
 
 def filter_empty_or_ignore_element(values):
     """Filter all empty or ignore XMind elements, especially notes、comments、labels element"""
-    result = []
-    for value in values:
-        if isinstance(value, str) and not value.strip() == '' and not value[0] in config['ignore_char']:
-            result.append(value.strip())
-    return result
+    return [
+        value.strip()
+        for value in values
+        if isinstance(value, str)
+        and value.strip() != ''
+        and value[0] not in config['ignore_char']
+    ]
 
 
 def sheet_to_suite(root_topic):
@@ -72,10 +72,10 @@ def sheet_to_suite(root_topic):
 
     suite.name = root_title
     suite.details = root_topic['note']
-    suite.sub_suites = []
+    suite.sub_suites = [
+        parse_testsuite(suite_dict) for suite_dict in root_topic['topics']
+    ]
 
-    for suite_dict in root_topic['topics']:
-        suite.sub_suites.append(parse_testsuite(suite_dict))
 
     return suite
 
@@ -88,17 +88,14 @@ def parse_testsuite(suite_dict):
     logging.debug('start to parse a testsuite: %s', testsuite.name)
 
     for cases_dict in suite_dict.get('topics', []):
-        for case in recurse_parse_testcase(cases_dict):
-            testsuite.testcase_list.append(case)
-
+        testsuite.testcase_list.extend(iter(recurse_parse_testcase(cases_dict)))
     logging.debug('testsuite(%s) parsing complete: %s', testsuite.name, testsuite.to_dict())
     return testsuite
 
 
 def recurse_parse_testcase(case_dict, parent=None):
     if is_testcase_topic(case_dict):
-        case = parse_a_testcase(case_dict, parent)
-        yield case
+        yield parse_a_testcase(case_dict, parent)
     else:
         if not parent:
             parent = []
@@ -106,9 +103,7 @@ def recurse_parse_testcase(case_dict, parent=None):
         parent.append(case_dict)
 
         for child_dict in case_dict.get('topics', []):
-            for case in recurse_parse_testcase(child_dict, parent):
-                yield case
-
+            yield from recurse_parse_testcase(child_dict, parent)
         parent.pop()
 
 
@@ -132,15 +127,14 @@ def parse_a_testcase(case_dict, parent):
     testcase.name = gen_testcase_title(topics)
 
     preconditions = gen_testcase_preconditions(topics)
-    testcase.preconditions = preconditions if preconditions else '无'
+    testcase.preconditions = preconditions or '无'
 
     summary = gen_testcase_summary(topics)
-    testcase.summary = summary if summary else testcase.name
+    testcase.summary = summary or testcase.name
     testcase.execution_type = get_execution_type(topics)
     testcase.importance = get_priority(case_dict) or 2
 
-    step_dict_list = case_dict.get('topics', [])
-    if step_dict_list:
+    if step_dict_list := case_dict.get('topics', []):
         testcase.steps = parse_test_steps(step_dict_list)
 
     # the result of the testcase take precedence over the result of the teststep
@@ -206,7 +200,7 @@ def gen_testcase_title(topics):
     # when separator is not blank, will add space around separator, e.g. '/' will be changed to ' / '
     separator = config['sep']
     if separator != ' ':
-        separator = ' {} '.format(separator)
+        separator = f' {separator} '
 
     return separator.join(titles)
 
@@ -238,16 +232,13 @@ def parse_a_test_step(step_dict):
     test_step = TestStep()
     test_step.actions = step_dict['title']
 
-    expected_topics = step_dict.get('topics', [])
-    if expected_topics:  # have expected result
+    if expected_topics := step_dict.get('topics', []):
         expected_topic = expected_topics[0]
         test_step.expectedresults = expected_topic['title']  # one test step action, one test expected result
         markers = expected_topic['markers']
-        test_step.result = get_test_result(markers)
-    else:  # only have test step
+    else:
         markers = step_dict['markers']
-        test_step.result = get_test_result(markers)
-
+    test_step.result = get_test_result(markers)
     logging.debug('finds a teststep: %s', test_step.to_dict())
     return test_step
 

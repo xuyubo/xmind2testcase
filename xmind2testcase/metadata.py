@@ -111,13 +111,11 @@ class TestStep(object):
         self.result = result
 
     def to_dict(self):
-        data = {
+        return {
             'step_number': self.step_number,
             'actions': self.actions,
             'expectedresults': self.expectedresults,
             'execution_type': self.execution_type,
             'result': self.result
         }
-
-        return data
 

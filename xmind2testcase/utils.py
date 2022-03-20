@@ -30,11 +30,9 @@ def get_xmind_testsuites(xmind_file):
     logging.debug("loading XMind file(%s) dict data: %s", xmind_file, xmind_content_dict)
 
     if xmind_content_dict:
-        testsuites = xmind_to_testsuites(xmind_content_dict)
-        return testsuites
-    else:
-        logging.error('Invalid XMind file(%s): it is empty!', xmind_file)
-        return []
+        return xmind_to_testsuites(xmind_content_dict)
+    logging.error('Invalid XMind file(%s): it is empty!', xmind_file)
+    return []
 
 
 def get_xmind_testsuite_list(xmind_file):
@@ -106,7 +104,7 @@ def xmind_testsuite_to_json_file(xmind_file):
     xmind_file = get_absolute_path(xmind_file)
     logging.info('Start converting XMind file(%s) to testsuites json file...', xmind_file)
     testsuites = get_xmind_testsuite_list(xmind_file)
-    testsuite_json_file = xmind_file[:-6] + '_testsuite.json'
+    testsuite_json_file = f'{xmind_file[:-6]}_testsuite.json'
 
     if os.path.exists(testsuite_json_file):
         os.remove(testsuite_json_file)
@@ -125,7 +123,7 @@ def xmind_testcase_to_json_file(xmind_file):
     xmind_file = get_absolute_path(xmind_file)
     logging.info('Start converting XMind file(%s) to testcases json file...', xmind_file)
     testcases = get_xmind_testcase_list(xmind_file)
-    testcase_json_file = xmind_file[:-6] + '.json'
+    testcase_json_file = f'{xmind_file[:-6]}.json'
 
     if os.path.exists(testcase_json_file):
         os.remove(testcase_json_file)
